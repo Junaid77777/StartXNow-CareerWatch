@@ -1,0 +1,25 @@
+{
+  "filters": {
+    "roles": ["Software Engineer", "Software Developer", "Backend Engineer", "Python Developer", "Graduate Engineer"],
+    "locations": ["India", "Hyderabad", "Bangalore", "Remote"],
+    "experience": ["0-2 Years", "Fresher", "Entry Level"]
+  },
+  "companies": [
+    {"name": "google", "module": "providers.google", "base_url": "https://careers.google.com"},
+    {"name": "microsoft", "module": "providers.microsoft", "base_url": "https://careers.microsoft.com"},
+    {"name": "amazon", "module": "providers.amazon", "base_url": "https://aws.amazon.com/careers"},
+    {"name": "oracle", "module": "providers.oracle", "base_url": "https://careers.oracle.com"},
+    {"name": "accenture", "module": "providers.accenture", "base_url": "https://accenture.com/careers"},
+    {"name": "ibm", "module": "providers.ibm", "base_url": "https://ibm.com/careers"}
+  ],
+  "email": {
+    "enabled": false,
+    "smtp_host": "smtp.gmail.com",
+    "smtp_port": 587,
+    "to": ""
+  },
+  "scheduler": {
+    "timezone": "Asia/Kolkata",
+    "daily_report_time": "19:00"
+  }
+}
