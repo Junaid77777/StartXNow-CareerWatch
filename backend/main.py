@@ -72,3 +72,41 @@ async def get_todays_jobs():
     from datetime import datetime
     jobs = get_jobs_by_date(datetime.now().strftime("%Y-%m-%d"))
     return {"jobs": [{"id": j.id, "title": j.title, "company": j.company, "location": j.location, "url": j.url, "posted_date": j.posted_date, "source": j.source, "created_at": j.created_at} for j in jobs], "count": len(jobs)}
+
+
+@app.post("/email/test")
+async def test_email():
+    from services.email_service import send_email, render_job_report_template, SMTP_USER, SMTP_PASSWORD
+    from services.logging_service import email_logger
+    
+    if not SMTP_USER or not SMTP_PASSWORD:
+        return {"status": "error", "message": "Email credentials not configured in .env"}
+    
+    try:
+        html_content = render_job_report_template([
+            {"company": "Test Company", "title": "Software Engineer", "location": "Bangalore, India", "url": "https://test.com/job"}
+        ])
+        success = send_email("StartXNow Career Watch - Test Email", html_content)
+        if success:
+            return {"status": "success", "message": "Test email sent"}
+        return {"status": "error", "message": "Failed to send email - check logs"}
+    except Exception as e:
+        email_logger.error(f"Email test failed: {str(e)}")
+        return {"status": "error", "message": str(e)}
+
+
+@app.get("/reports/latest")
+async def get_latest_report():
+    from services.report_service import get_latest_report
+    report = get_latest_report()
+    if report:
+        return {
+            "date": report.date,
+            "scan_time": report.scan_time,
+            "jobs_found": report.jobs_found,
+            "new_jobs": report.new_jobs,
+            "duplicates": report.duplicates,
+            "execution_time": report.execution_time,
+            "email_sent": report.email_sent
+        }
+    return {"message": "No reports found"}

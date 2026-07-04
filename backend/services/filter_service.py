@@ -7,11 +7,11 @@ def filter_job(job: Dict[str, Any], filters: Dict[str, Any] = None) -> bool:
     if filters is None:
         filters = load_filters()
     
-    title = job.get("title", "").lower()
-    location = job.get("location", "").lower()
+    title = str(job.get("title", "")).lower()
+    location = str(job.get("location", "")).lower()
     
-    role_keywords = [r.lower() for r in filters.get("roles", [])]
-    location_keywords = [l.lower() for l in filters.get("locations", [])]
+    role_keywords = [str(r).lower() for r in filters.get("roles", [])]
+    location_keywords = [str(l).lower() for l in filters.get("locations", [])]
     
     title_match = any(kw in title for kw in role_keywords)
     

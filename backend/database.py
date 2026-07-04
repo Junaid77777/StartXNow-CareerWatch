@@ -43,8 +43,12 @@ class DailyReport(Base):
     
     id = Column(Integer, primary_key=True, index=True)
     date = Column(String, nullable=False)
-    job_count = Column(Integer, default=0)
-    status = Column(String, default="pending")
+    scan_time = Column(String)
+    jobs_found = Column(Integer, default=0)
+    new_jobs = Column(Integer, default=0)
+    duplicates = Column(Integer, default=0)
+    execution_time = Column(String)
+    email_sent = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 

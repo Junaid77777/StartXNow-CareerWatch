@@ -20,11 +20,40 @@ def init_scheduler():
 
 
 async def collect_daily_jobs():
+    import time
+    start_time = time.time()
     scheduler_logger.info("Running Daily Scan")
-    from providers.collector import collect_all_jobs, save_jobs_to_db
-    jobs, found, filter_duplicates, errors = collect_all_jobs()
-    added, db_duplicates = save_jobs_to_db(jobs)
-    return {"jobs_found": found, "jobs_added": added, "duplicates": db_duplicates, "errors": errors}
+    
+    try:
+        from providers.collector import collect_all_jobs, save_jobs_to_db
+        from services.report_service import create_report, update_report
+        
+        jobs, found, filter_duplicates, errors = collect_all_jobs()
+        added, db_duplicates = save_jobs_to_db(jobs)
+        
+        report = create_report(jobs_found=found, new_jobs=added, duplicates=db_duplicates)
+        
+        email_sent = False
+        if added > 0:
+            try:
+                from services.email_service import send_email, render_job_report_template
+                from services.job_service import get_jobs
+                all_jobs = get_jobs()
+                html_content = render_job_report_template([
+                    {"company": j.company, "title": j.title, "location": j.location, "url": j.url}
+                    for j in all_jobs
+                ])
+                email_sent = send_email("StartXNow Career Watch", html_content)
+            except Exception as e:
+                scheduler_logger.error(f"Failed to send email: {str(e)}")
+        
+        execution_time = f"{time.time() - start_time:.2f}s"
+        update_report(report.id, execution_time, email_sent)
+        
+        return {"jobs_found": found, "jobs_added": added, "duplicates": db_duplicates, "errors": errors, "execution_time": execution_time}
+    except Exception as e:
+        scheduler_logger.error(f"Scheduler crashed: {str(e)}")
+        return {"jobs_found": 0, "jobs_added": 0, "duplicates": 0, "errors": 1, "execution_time": "0s"}
 
 
 def add_daily_report_job(hour: int = 19, minute: int = 0):
