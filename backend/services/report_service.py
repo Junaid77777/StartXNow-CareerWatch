@@ -1,7 +1,5 @@
-from sqlalchemy.orm import Session
 from database import DailyReport, SessionLocal
 from datetime import datetime
-import time
 
 
 def create_report(jobs_found: int, new_jobs: int, duplicates: int, email_sent: bool = False) -> DailyReport:

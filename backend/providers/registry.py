@@ -16,9 +16,11 @@ def load_providers():
         module_name = company["module"]
         base_url = company["base_url"]
         
+        class_name = "".join(word.capitalize() for word in name.split("_")) + "Provider"
+        
         try:
             module = importlib.import_module(module_name)
-            provider_class = getattr(module, name.capitalize() + "Provider")
+            provider_class = getattr(module, class_name)
             providers[name] = provider_class(name=name, base_url=base_url)
             providers_logger.info(f"Loaded provider: {name}")
         except Exception as e:

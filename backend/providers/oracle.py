@@ -1,6 +1,12 @@
 from providers.base import BaseProvider
 from typing import List, Dict, Any
 from datetime import datetime
+import requests
+
+headers = {
+    "Accept": "application/json",
+    "User-Agent": "StartXNow-Career-Watch/1.0"
+}
 
 
 class OracleProvider(BaseProvider):
@@ -10,12 +16,11 @@ class OracleProvider(BaseProvider):
     def fetch_jobs(self) -> List[Dict[str, Any]]:
         jobs = []
         try:
-            import requests
             response = requests.get(
                 "https://jobs.oracle.com/api/jobsearch",
                 params={"location": "India"},
                 timeout=30,
-                headers={"Accept": "application/json"}
+                headers=headers
             )
             if response.status_code == 200:
                 data = response.json()

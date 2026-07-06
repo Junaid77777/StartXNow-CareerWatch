@@ -24,6 +24,8 @@ class Job(Base):
     description = Column(Text)
     posted_date = Column(String)
     source = Column(String)
+    employment_type = Column(String)
+    experience = Column(String)
     is_new = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -52,13 +54,30 @@ class DailyReport(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class ProviderHistory(Base):
+    __tablename__ = "provider_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    provider_name = Column(String, nullable=False)
+    status = Column(String, nullable=False)
+    jobs_found = Column(Integer, default=0)
+    error = Column(Text)
+    duration = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ScanHistory(Base):
+    __tablename__ = "scan_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    date = Column(String, nullable=False)
+    jobs_found = Column(Integer, default=0)
+    jobs_added = Column(Integer, default=0)
+    duplicates = Column(Integer, default=0)
+    errors = Column(Integer, default=0)
+    duration = Column(String)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 def init_db():
     Base.metadata.create_all(bind=engine)
-
-
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()

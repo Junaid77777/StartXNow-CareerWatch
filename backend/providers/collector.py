@@ -2,11 +2,11 @@ import time
 from typing import List, Dict, Any, Tuple
 from providers.registry import load_providers
 from services.logging_service import scheduler_logger, providers_logger
-from services.filter_service import apply_filters
-from database import Job, SessionLocal
+from services.filter_engine import apply_filters
+from database import Job, SessionLocal, ProviderHistory, ScanHistory
 
 MAX_RETRIES = 3
-PROVIDER_TIMEOUT = 30
+RATE_LIMIT_DELAY = 1
 
 
 def fetch_with_retry(provider, max_retries: int = MAX_RETRIES) -> List[Dict[str, Any]]:
@@ -14,13 +14,46 @@ def fetch_with_retry(provider, max_retries: int = MAX_RETRIES) -> List[Dict[str,
     for attempt in range(max_retries):
         try:
             jobs = provider.fetch_jobs()
-            return jobs
+            return jobs, None
         except Exception as e:
             last_error = e
             providers_logger.warning(f"Attempt {attempt + 1} failed for {provider.name}: {str(e)}")
             time.sleep(2)
     providers_logger.error(f"All {max_retries} attempts failed for {provider.name}: {str(last_error)}")
-    return []
+    return [], str(last_error)
+
+
+def save_provider_history(name: str, status: str, jobs_count: int, error: str = None, duration: float = 0):
+    db = SessionLocal()
+    try:
+        history = ProviderHistory(
+            provider_name=name,
+            status=status,
+            jobs_found=jobs_count,
+            error=error,
+            duration=f"{duration:.2f}s"
+        )
+        db.add(history)
+        db.commit()
+    finally:
+        db.close()
+
+
+def save_scan_history(date: str, jobs_found: int, jobs_added: int, duplicates: int, errors: int, duration: str):
+    db = SessionLocal()
+    try:
+        history = ScanHistory(
+            date=date,
+            jobs_found=jobs_found,
+            jobs_added=jobs_added,
+            duplicates=duplicates,
+            errors=errors,
+            duration=duration
+        )
+        db.add(history)
+        db.commit()
+    finally:
+        db.close()
 
 
 def collect_all_jobs() -> Tuple[List[Dict[str, Any]], int, int, int]:
@@ -33,15 +66,19 @@ def collect_all_jobs() -> Tuple[List[Dict[str, Any]], int, int, int]:
     
     for name, provider in providers.items():
         start = time.time()
-        try:
-            jobs = fetch_with_retry(provider)
+        time.sleep(RATE_LIMIT_DELAY)
+        
+        jobs, error = fetch_with_retry(provider)
+        elapsed = time.time() - start
+        
+        if error:
+            errors += 1
+            save_provider_history(name, "failed", 0, error, elapsed)
+        else:
             all_jobs.extend(jobs)
-            elapsed = time.time() - start
             stats["provider_times"][name] = elapsed
             scheduler_logger.info(f"Collected {len(jobs)} jobs from {name} in {elapsed:.2f}s")
-        except Exception as e:
-            scheduler_logger.error(f"Error fetching jobs from {name}: {str(e)}")
-            errors += 1
+            save_provider_history(name, "success", len(jobs), None, elapsed)
     
     stats["total_time"] = sum(stats["provider_times"].values())
     scheduler_logger.info(f"Total jobs collected: {len(all_jobs)} in {stats['total_time']:.2f}s")
@@ -70,7 +107,9 @@ def save_jobs_to_db(jobs: List[Dict[str, Any]]) -> Tuple[int, int]:
                 location=job.get("location"),
                 url=job.get("url"),
                 posted_date=job.get("posted_date") or datetime.now().strftime("%Y-%m-%d"),
-                source=job.get("source")
+                source=job.get("source"),
+                employment_type=job.get("employment_type"),
+                experience=job.get("experience")
             )
             db.add(db_job)
             added += 1

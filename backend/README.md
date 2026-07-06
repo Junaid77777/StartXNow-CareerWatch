@@ -1,87 +1,27 @@
 # StartXNow Career Watch
 
-Personal job notification bot that monitors company career pages and emails daily reports.
+Personal job notification bot that monitors 50+ company career pages and emails daily HTML reports.
 
-## Architecture
+## Features
 
-```
-StartXNow-CareerWatch/
-├── backend/
-│   ├── providers/
-│   │   ├── base.py              # Base provider class
-│   │   ├── registry.py          # Dynamic provider loader
-│   │   ├── collector.py         # Job collection orchestration
-│   │   ├── google.py            # Google provider
-│   │   ├── microsoft.py         # Microsoft provider
-│   │   ├── amazon.py            # Amazon provider
-│   │   ├── oracle.py            # Oracle provider
-│   │   ├── accenture.py         # Accenture provider
-│   │   └── ibm.py               # IBM provider
-│   ├── services/
-│   │   ├── scheduler_service.py   # APScheduler setup
-│   │   ├── logging_service.py     # Logging configuration
-│   │   ├── job_service.py         # Job CRUD operations
-│   │   ├── email_service.py       # SMTP email service
-│   │   ├── filter_service.py      # Job filtering logic
-│   │   └── report_service.py      # Report management
-│   ├── templates/
-│   │   └── __init__.py
-│   ├── logs/
-│   │   ├── scheduler.log
-│   │   ├── providers.log
-│   │   └── email.log
-│   ├── database.py              # SQLAlchemy models
-│   ├── config.py                # Configuration loader
-│   ├── config.json              # Provider and filter config
-│   ├── main.py                  # FastAPI application
-│   ├── requirements.txt         # Python dependencies
-│   └── .env.example             # Environment template
-```
+- **50+ Company Providers**: Google, Microsoft, Amazon, Adobe, NVIDIA, Intel, Oracle, Cisco, IBM, SAP, Salesforce, ServiceNow, Atlassian, Zoho, Freshworks, Qualcomm, AMD, Accenture, Capgemini, Deloitte, EY, PwC, TCS, Infosys, Wipro, HCL, Tech Mahindra, Cognizant, LTIMindtree, JPMorgan Chase, Goldman Sachs, Morgan Stanley, PhonePe, Razorpay, Flipkart, Swiggy, Meesho, Paytm, Nutanix, Cloudflare, Snowflake, OpenAI, Anthropic, Stripe, Datadog, GitHub, Netflix, Booking.com, Uber, Airbnb
+- **Intelligent Filtering**: Accepts software roles, rejects sales/marketing/HR/finance roles, filters by experience and location
+- **Production Scheduler**: Runs daily at 7:00 PM IST with retry logic and graceful failure
+- **Professional HTML Email**: Responsive daily report with company grouping, badges, and direct apply buttons
+- **Health Monitoring**: Health check endpoint for deployment platforms
+- **Automatic Log Rotation**: 1MB max with 5 backups
 
 ## Installation
 
 ```bash
-# Clone the repository
-cd StartXNow-CareerWatch/backend
-
-# Install dependencies
+cd backend
 pip install -r requirements.txt
-
-# Copy environment file
 copy .env.example .env
-
-# Edit .env with your credentials
-# SMTP_USER=your-email@gmail.com
-# SMTP_PASSWORD=your-app-password
-# EMAIL_TO=your-email@gmail.com
 ```
-
-## Running
-
-```bash
-# Start the server
-uvicorn main:app --host 127.0.0.1 --port 8000
-
-# Or for development with auto-reload
-uvicorn main:app --reload
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | /health | Health check |
-| POST | /scheduler/run-now | Trigger daily scan manually |
-| POST | /jobs/refresh | Refresh jobs from all providers |
-| GET | /jobs | List all jobs |
-| GET | /jobs/today | Get jobs from today |
-| DELETE | /jobs?job_id=X | Delete a specific job |
-| POST | /email/test | Send test email |
-| GET | /reports/latest | Get latest scan report |
 
 ## Configuration
 
-Edit `config.json`:
+Edit `config.json` to customize filters:
 
 ```json
 {
@@ -89,30 +29,115 @@ Edit `config.json`:
     "roles": ["Software Engineer", "Software Developer", "Backend Engineer", "Python Developer", "Graduate Engineer"],
     "locations": ["India", "Hyderabad", "Bangalore", "Remote"],
     "experience": ["0-2 Years", "Fresher", "Entry Level"]
-  },
-  "companies": [
-    {"name": "google", "module": "providers.google", "base_url": "https://careers.google.com"},
-    ...
-  ]
+  }
 }
 ```
 
+## Environment Variables
+
+Create a `.env` file in the backend directory:
+
+```bash
+# Scheduler
+SCHEDULER_TIMEZONE=Asia/Kolkata
+
+# Database
+DATABASE_PATH=jobs.db
+
+# Email (SMTP)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=your-email@gmail.com
+SMTP_PASSWORD=your-app-password
+EMAIL_TO=recipient@email.com
+
+# Logging
+LOGS_DIR=logs
+```
+
+## Run Locally
+
+```bash
+cd backend
+uvicorn main:app --host 0.0.0.0 --port 8000
+```
+
+The scheduler starts automatically at 7:00 PM IST.
+
+## Deploy
+
+### Railway / Render
+
+1. Connect your repository
+2. Set environment variables in the dashboard
+3. Deploy the `backend` directory
+
+The app starts automatically via `Procfile`:
+```
+web: uvicorn main:app --host 0.0.0.0 --port $PORT
+```
+
+### Docker
+
+```dockerfile
+FROM python:3.11-slim
+WORKDIR /app
+COPY backend/requirements.txt .
+RUN pip install -r requirements.txt
+COPY backend/ .
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+## Scheduler
+
+- Starts automatically on app startup
+- Runs daily at 7:00 PM IST (configurable via `add_daily_report_job(hour=19, minute=0)`)
+- Prevents duplicate scheduler instances
+- Logs start time, end time, jobs scraped, jobs emailed, and errors
+- Continues remaining providers if one fails
+
+## Email Setup
+
+For Gmail:
+1. Enable 2-factor authentication
+2. Generate an App Password
+3. Use the App Password as `SMTP_PASSWORD`
+
+For other providers, use the SMTP credentials provided by your email service.
+
+Test email:
+```bash
+curl -X POST http://localhost:8000/email/test
+```
+
+## API Endpoints
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | /health | Health check for monitoring |
+| POST | /scheduler/run-now | Trigger daily scan manually |
+| POST | /jobs/refresh | Refresh jobs from all providers |
+| GET | /jobs | List all jobs (paginated) |
+| GET | /jobs/today | Get jobs from today |
+| DELETE | /jobs?job_id=X | Delete a specific job |
+| POST | /email/test | Send test email |
+| POST | /email/send-today | Send today's jobs via email |
+| GET | /reports/latest | Get latest scan report |
+
 ## Troubleshooting
 
-**Email fails to send:**
-- Verify SMTP credentials in `.env` file
-- For Gmail, use App Password instead of regular password
-- Check `logs/email.log` for error details
+- **Email fails**: Verify SMTP credentials in `.env`. For Gmail, use App Password.
+- **No jobs found**: Check `logs/scraper.log` for provider errors.
+- **Scheduler not running**: Check `logs/scheduler.log` for startup errors.
+- **Database issues**: Delete `jobs.db` and restart to reset.
+- **Logs not rotating**: Ensure `LOGS_DIR` is writable.
 
-**No jobs found:**
-- Check `logs/providers.log` for provider loading errors
-- Verify providers return jobs matching your filters in `config.json`
-- Check `logs/scheduler.log` for collection errors
+## Testing
 
-**Scheduler not running:**
-- Verify `SCHEDULER_TIMEZONE` in `.env` matches your timezone
-- Check that the daily job is added at startup in logs
+```bash
+python -m pytest tests/test_filter_engine.py -v
+```
 
-**Database issues:**
-- Delete `jobs.db` to reset the database (loses all data)
-- Restart the server to recreate tables
+## License
+
+MIT

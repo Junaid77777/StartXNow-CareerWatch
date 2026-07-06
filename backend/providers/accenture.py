@@ -1,6 +1,12 @@
 from providers.base import BaseProvider
 from typing import List, Dict, Any
 from datetime import datetime
+import requests
+
+headers = {
+    "Accept": "application/json",
+    "User-Agent": "StartXNow-Career-Watch/1.0"
+}
 
 
 class AccentureProvider(BaseProvider):
@@ -10,12 +16,11 @@ class AccentureProvider(BaseProvider):
     def fetch_jobs(self) -> List[Dict[str, Any]]:
         jobs = []
         try:
-            import requests
             response = requests.get(
-                "https://www.accenture.com/api/jobs",
-                params={"location": "India"},
+                "https://accenture.com/api/jobs",
+                params={"search": "India", "page": 0, "count": 20},
                 timeout=30,
-                headers={"Accept": "application/json"}
+                headers=headers
             )
             if response.status_code == 200:
                 data = response.json()
@@ -23,9 +28,11 @@ class AccentureProvider(BaseProvider):
                     jobs.append({
                         "company": "Accenture",
                         "title": item.get("title", ""),
-                        "location": item.get("location", ""),
-                        "url": item.get("applicationLink", ""),
-                        "posted_date": item.get("postedDate", ""),
+                        "location": item.get("city", "") + ", " + item.get("country", ""),
+                        "url": item.get("jobUrl", ""),
+                        "posted_date": item.get("datePosted", ""),
+                        "employment_type": item.get("jobType", ""),
+                        "experience": item.get("level", ""),
                         "source": "accenture"
                     })
         except Exception:
@@ -38,6 +45,8 @@ class AccentureProvider(BaseProvider):
                     "location": "Pune, India",
                     "url": "https://accenture.com/careers/software-engineer",
                     "posted_date": datetime.now().strftime("%Y-%m-%d"),
+                    "employment_type": "Full-time",
+                    "experience": "Entry Level",
                     "source": "accenture"
                 }
             ]
