@@ -1,4 +1,4 @@
-name: Daily Job Alert
+name: Daily Career Watch
 
 on:
   schedule:
@@ -8,17 +8,35 @@ on:
   workflow_dispatch:
 
 jobs:
-  send-job-alert:
+  daily-job-alert:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Trigger job collection
-        run: |
-          curl -X POST ${{ secrets.RENDER_URL }}/jobs/refresh
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Wait for scraping
-        run: sleep 30
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
-      - name: Send today's email
+      - name: Install dependencies
+        working-directory: backend
         run: |
-          curl -X POST ${{ secrets.RENDER_URL }}/email/send-today
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Daily Career Watch
+        working-directory: backend
+        env:
+          SMTP_HOST: smtp.gmail.com
+          SMTP_PORT: 587
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          EMAIL_TO: ${{ secrets.EMAIL_TO }}
+          DATABASE_PATH: jobs.db
+          LOGS_DIR: logs
+          SCHEDULER_TIMEZONE: Asia/Kolkata
+        run: |
+          python run_daily.py
+          
