@@ -4,51 +4,32 @@ from .google import GoogleProvider
 from .microsoft import MicrosoftProvider
 from .amazon import AmazonProvider
 from .oracle import OracleProvider
-from .accenture import AccentureProvider
 from .ibm import IbmProvider
 from .adobe import AdobeProvider
 from .cisco import CiscoProvider
 from .intel import IntelProvider
 from .nvidia import NvidiaProvider
+from .salesforce import SalesforceProvider
+from .qualcomm import QualcommProvider
+from .sap import SapProvider
 from .zoho import ZohoProvider
 from .freshworks import FreshworksProvider
-from .sap import SapProvider
-from .salesforce import SalesforceProvider
-from .servicenow import ServicenowProvider
-from .atlassian import AtlassianProvider
-from .qualcomm import QualcommProvider
-from .amd import AmdProvider
-from .capgemini import CapgeminiProvider
-from .deloitte import DeloitteProvider
-from .ey import EyProvider
-from .pwc import PwcProvider
-from .tcs import TcsProvider
-from .infosys import InfosysProvider
-from .wipro import WiproProvider
-from .hcl import HclProvider
-from .tech_mahindra import TechMahindraProvider
-from .cognizant import CognizantProvider
-from .ltimes import LtimindtreeProvider
-from .jpmorgan import JpmorganProvider
-from .goldman import GoldmanProvider
-from .morgan_stanley import MorganStanleyProvider
-from .phonepe import PhonepeProvider
 from .razorpay import RazorpayProvider
+from .phonepe import PhonepeProvider
+from .groww import GrowwProvider
+from .browserstack import BrowserstackProvider
+from .postman import PostmanProvider
 from .flipkart import FlipkartProvider
-from .swiggy import SwiggyProvider
 from .meesho import MeeshoProvider
-from .paytm import PaytmProvider
-from .nutanix import NutanixProvider
-from .cloudflare import CloudflareProvider
-from .snowflake import SnowflakeProvider
-from .openai import OpenaiProvider
-from .anthropic import AnthropicProvider
-from .stripe import StripeProvider
-from .datadog import DatadogProvider
-from .github import GithubProvider
-from .netflix import NetflixProvider
-from .booking import BookingProvider
-from .uber import UberProvider
-from .airbnb import AirbnbProvider
+from .swiggy import SwiggyProvider
+from .cred import CredProvider
 
-__all__ = ["BaseProvider", "load_providers", "GoogleProvider", "MicrosoftProvider", "AmazonProvider", "OracleProvider", "AccentureProvider", "IbmProvider", "AdobeProvider", "CiscoProvider", "IntelProvider", "NvidiaProvider", "ZohoProvider", "FreshworksProvider", "SapProvider", "SalesforceProvider", "ServicenowProvider", "AtlassianProvider", "QualcommProvider", "AmdProvider", "CapgeminiProvider", "DeloitteProvider", "EyProvider", "PwcProvider", "TcsProvider", "InfosysProvider", "WiproProvider", "HclProvider", "TechMahindraProvider", "CognizantProvider", "LtimindtreeProvider", "JpmorganProvider", "GoldmanProvider", "MorganStanleyProvider", "PhonepeProvider", "RazorpayProvider", "FlipkartProvider", "SwiggyProvider", "MeeshoProvider", "PaytmProvider", "NutanixProvider", "CloudflareProvider", "SnowflakeProvider", "OpenaiProvider", "AnthropicProvider", "StripeProvider", "DatadogProvider", "GithubProvider", "NetflixProvider", "BookingProvider", "UberProvider", "AirbnbProvider"]
+__all__ = [
+    "BaseProvider", "load_providers",
+    "GoogleProvider", "MicrosoftProvider", "AmazonProvider", "OracleProvider",
+    "IbmProvider", "AdobeProvider", "CiscoProvider", "IntelProvider",
+    "NvidiaProvider", "SalesforceProvider", "QualcommProvider", "SapProvider",
+    "ZohoProvider", "FreshworksProvider", "RazorpayProvider", "PhonepeProvider",
+    "GrowwProvider", "BrowserstackProvider", "PostmanProvider",
+    "FlipkartProvider", "MeeshoProvider", "SwiggyProvider", "CredProvider"
+]

@@ -59,7 +59,7 @@ def is_hybrid(job: dict) -> bool:
     return "hybrid" in employment_type
 
 
-def render_job_report_template(jobs: list, total_count: int = 0) -> str:
+def render_job_report_template(jobs: list, total_count: int = 0, scan_stats: dict = None) -> str:
     template = Template("""
 <!DOCTYPE html>
 <html>
@@ -98,20 +98,30 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
             font-size: 14px;
             opacity: 0.9;
         }
-        .summary {
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
             padding: 20px;
             background: #f8f9fa;
             border-bottom: 1px solid #e9ecef;
-            text-align: center;
         }
-        .summary .count {
-            font-size: 36px;
+        .stat-card {
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 12px 14px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+        }
+        .stat-value {
+            font-size: 22px;
             font-weight: 700;
             color: #1a73e8;
         }
-        .summary .label {
+        .stat-label {
+            font-size: 12px;
             color: #666;
-            font-size: 14px;
+            margin-top: 4px;
         }
         .company-group {
             margin: 0 20px 20px;
@@ -142,15 +152,16 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
             font-size: 16px;
             font-weight: 600;
             color: #212529;
-            margin-bottom: 6px;
-        }
-        .job-location {
-            color: #6c757d;
-            font-size: 14px;
             margin-bottom: 8px;
         }
+        .job-meta {
+            font-size: 13px;
+            color: #868e96;
+            margin-bottom: 4px;
+        }
         .job-badges {
-            margin-bottom: 12px;
+            margin-top: 8px;
+            margin-bottom: 10px;
         }
         .badge {
             display: inline-block;
@@ -163,11 +174,6 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
         .badge-remote { background: #e8f5e9; color: #2e7d32; }
         .badge-hybrid { background: #e3f2fd; color: #1565c0; }
         .badge-entry { background: #fff3e0; color: #ef6c00; }
-        .job-meta {
-            font-size: 13px;
-            color: #868e96;
-            margin-bottom: 12px;
-        }
         .apply-btn {
             display: inline-block;
             background: #1a73e8;
@@ -177,16 +183,9 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
             border-radius: 6px;
             font-size: 14px;
             font-weight: 500;
-            transition: background 0.2s;
+            margin-top: 10px;
         }
         .apply-btn:hover { background: #0d47a1; }
-        .career-link {
-            display: inline-block;
-            margin-left: 12px;
-            color: #6c757d;
-            font-size: 13px;
-            text-decoration: none;
-        }
         .no-jobs {
             text-align: center;
             padding: 60px 20px;
@@ -216,13 +215,31 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
 <body>
     <div class="container">
         <div class="header">
-            <h1>StartXNow AI Daily Career Report</h1>
+            <h1>🇮🇳 StartXNow Career Watch</h1>
             <div class="date">{{ current_date }}</div>
         </div>
         
-        <div class="summary">
-            <div class="count">{{ total_count }}</div>
-            <div class="label">new matching jobs found</div>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">{{ stats.companies_scanned }}</div>
+                <div class="stat-label">Companies Scanned</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ stats.jobs_found }}</div>
+                <div class="stat-label">Jobs Found</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ stats.indian_jobs_matched }}</div>
+                <div class="stat-label">Indian Jobs Matched</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ stats.duplicates_removed }}</div>
+                <div class="stat-label">Duplicates Removed</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">{{ stats.providers_failed }}</div>
+                <div class="stat-label">Providers Failed</div>
+            </div>
         </div>
         
         {% if jobs %}
@@ -231,23 +248,16 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
                 <div class="company-name">{{ company }} ({{ company_jobs|length }} position{{ 's' if company_jobs|length > 1 else '' }})</div>
                 {% for job in company_jobs %}
                 <div class="job">
-                    <div class="job-title">{{ job.title }}</div>
-                    <div class="job-location">{{ job.location }}</div>
-                    
+                    <div class="job-title">💼 {{ job.title }}</div>
+                    <div class="job-meta">📍 {{ job.location }}</div>
+                    <div class="job-meta">🎓 {{ job.experience or 'Not specified' }}</div>
+                    <div class="job-meta">📅 {{ job.posted_date or 'Date not specified' }}</div>
                     <div class="job-badges">
                         {% if job.is_remote %}<span class="badge badge-remote">Remote</span>{% endif %}
                         {% if job.is_hybrid %}<span class="badge badge-hybrid">Hybrid</span>{% endif %}
                         {% if job.is_entry_level %}<span class="badge badge-entry">Entry Level</span>{% endif %}
                     </div>
-                    
-                    <div class="job-meta">
-                        {% if job.posted_date %}Posted: {{ job.posted_date }}{% endif %}
-                        {% if job.posted_date and job.employment_type %}<span class="separator">•</span> {% endif %}
-                        {% if job.employment_type %}{{ job.employment_type }}{% endif %}
-                    </div>
-                    
-                    <a href="{{ job.url }}" class="apply-btn" target="_blank" rel="noopener noreferrer">Direct Apply</a>
-                    {% if job.career_page %}<a href="{{ job.career_page }}" class="career-link" target="_blank" rel="noopener noreferrer">Career Page</a>{% endif %}
+                    <a href="{{ job.url }}" class="apply-btn" target="_blank" rel="noopener noreferrer">🔗 Apply Now</a>
                 </div>
                 {% endfor %}
             </div>
@@ -291,16 +301,28 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
         job_copy["is_remote"] = is_remote(job)
         job_copy["is_hybrid"] = is_hybrid(job)
         job_copy["is_entry_level"] = job_is_fresher(job.get("experience", ""))
+        job_copy.setdefault("experience", "")
+        job_copy.setdefault("posted_date", "")
         jobs_by_company[company].append(job_copy)
     
     sorted_companies = sorted(jobs_by_company.keys())
     jobs_by_company_sorted = {company: jobs_by_company[company] for company in sorted_companies}
     
+    if scan_stats is None:
+        scan_stats = {
+            "companies_scanned": 0,
+            "jobs_found": total_count or len(unique_jobs),
+            "indian_jobs_matched": len(unique_jobs),
+            "duplicates_removed": 0,
+            "providers_failed": 0
+        }
+    
     return template.render(
         jobs=unique_jobs,
         jobs_by_company=dict(jobs_by_company_sorted),
         total_count=total_count or len(unique_jobs),
-        current_date=datetime.now().strftime("%B %d, %Y")
+        current_date=datetime.now().strftime("%B %d, %Y"),
+        stats=scan_stats
     )
 
 

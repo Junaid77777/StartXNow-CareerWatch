@@ -9,7 +9,7 @@ MAX_RETRIES = 3
 RATE_LIMIT_DELAY = 1
 
 
-def fetch_with_retry(provider, max_retries: int = MAX_RETRIES) -> List[Dict[str, Any]]:
+def fetch_with_retry(provider, max_retries: int = MAX_RETRIES) -> Tuple[List[Dict[str, Any]], Optional[str]]:
     last_error = None
     for attempt in range(max_retries):
         try:
@@ -77,21 +77,45 @@ def collect_all_jobs() -> Tuple[List[Dict[str, Any]], int, int, int]:
         else:
             all_jobs.extend(jobs)
             stats["provider_times"][name] = elapsed
-            scheduler_logger.info(f"Collected {len(jobs)} jobs from {name} in {elapsed:.2f}s")
+            scheduler_logger.info(f"Collected {len(jobs)} jobs from {name} in {elapsed:.2f}s", extra={"company": name, "status": "success", "duration": f"{elapsed:.2f}s", "errors": 0, "jobs": len(jobs)})
             save_provider_history(name, "success", len(jobs), None, elapsed)
     
     stats["total_time"] = sum(stats["provider_times"].values())
-    scheduler_logger.info(f"Total jobs collected: {len(all_jobs)} in {stats['total_time']:.2f}s")
+    scheduler_logger.info(f"Total jobs collected: {len(all_jobs)} in {stats['total_time']:.2f}s", extra={"jobs": len(all_jobs), "duration": f"{stats['total_time']:.2f}s"})
     
-    filtered_jobs = apply_filters(all_jobs)
-    duplicates = len(all_jobs) - len(filtered_jobs)
+    filter_result = apply_filters(all_jobs)
+    filtered_jobs = filter_result["accepted"]
+    filter_stats = filter_result["stats"]
     
-    scheduler_logger.info(f"After filtering: {len(filtered_jobs)} jobs matched")
-    return filtered_jobs, len(all_jobs), duplicates, errors
+    scheduler_logger.info(
+        f"Filter stats: {filter_stats['accepted_count']} accepted, {filter_stats['rejected_count']} rejected "
+        f"(role: {filter_stats['role_rejected']}, location: {filter_stats['location_rejected']}, "
+        f"date: {filter_stats['date_rejected']}, experience: {filter_stats['experience_rejected']})",
+        extra={"jobs": filter_stats["accepted_count"], "errors": filter_stats["rejected_count"]}
+    )
+    
+    seen_urls = set()
+    unique_jobs = []
+    duplicates = 0
+    for job in filtered_jobs:
+        url = job.get("url") or ""
+        url_hash = get_url_hash(url)
+        if url_hash not in seen_urls:
+            seen_urls.add(url_hash)
+            unique_jobs.append(job)
+        else:
+            duplicates += 1
+    
+    scheduler_logger.info(f"After filtering and deduplication: {len(unique_jobs)} jobs matched")
+    return unique_jobs, len(all_jobs), duplicates, errors
+
+
+def get_url_hash(url: str) -> str:
+    import hashlib
+    return hashlib.md5(url.encode()).hexdigest()
 
 
 def save_jobs_to_db(jobs: List[Dict[str, Any]]) -> Tuple[int, int]:
-    from datetime import datetime
     db = SessionLocal()
     added = 0
     duplicates = 0

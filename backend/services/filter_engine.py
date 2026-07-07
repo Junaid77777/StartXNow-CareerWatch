@@ -5,14 +5,31 @@ from typing import List, Dict, Any, Optional
 
 
 ACCEPT_ROLES = [
-    "software engineer", "software developer", "python developer", "backend engineer",
-    "ai engineer", "machine learning engineer", "data engineer", "graduate engineer",
-    "associate software engineer", "sde", "developer", "full stack", "backend"
+    "software engineer", "software developer", "sde", "backend engineer",
+    "python developer", "full stack developer", "data engineer",
+    "data scientist", "ai engineer", "ml engineer", "devops engineer",
+    "associate software engineer", "graduate engineer", "graduate program",
+    "campus hire"
 ]
 
 REJECT_ROLES = [
-    "sales", "marketing", "finance", "hr", "recruiter", "customer support",
-    "operations", "legal", "accountant", "business development", "consultant"
+    "hr", "marketing", "finance", "sales", "support", "consultant",
+    "manager", "lead", "principal", "architect", "director"
+]
+
+ACCEPT_EXPERIENCE = [
+    "0 years", "1 year", "2 years", "fresh graduate",
+    "campus", "entry level", "associate"
+]
+
+REJECT_EXPERIENCE = [
+    "3+ years", "5+ years", "senior", "lead", "principal", "architect"
+]
+
+ACCEPT_LOCATIONS = [
+    "bangalore", "hyderabad", "pune", "chennai", "noida", "gurugram",
+    "mumbai", "delhi", "ahmedabad", "coimbatore", "kochi", "kolkata",
+    "remote india", "remote (india)"
 ]
 
 
@@ -21,8 +38,9 @@ def load_preferences() -> Dict[str, Any]:
         config = json.load(f)
     return {
         "include_roles": config.get("filters", {}).get("roles", ACCEPT_ROLES),
-        "include_locations": config.get("filters", {}).get("locations", ["India", "Hyderabad", "Bangalore", "Remote"]),
-        "include_experience": config.get("filters", {}).get("experience", ["0-2 Years", "Fresher", "Entry Level"]),
+        "include_locations": ACCEPT_LOCATIONS,
+        "include_experience": ACCEPT_EXPERIENCE,
+        "reject_experience": REJECT_EXPERIENCE,
         "country": config.get("filters", {}).get("country", "India")
     }
 
@@ -36,9 +54,11 @@ def job_matches_role(title: str) -> bool:
 
 def job_matches_location(location: str, preferences: Dict[str, Any]) -> bool:
     if not location:
-        return True
+        return False
     location_lower = (location or "").lower()
-    return any(loc.lower() in location_lower for loc in preferences.get("include_locations", []))
+    if "india" in location_lower:
+        return True
+    return any(loc in location_lower for loc in preferences.get("include_locations", []))
 
 
 def job_is_recent(posted_date: Optional[str], include_internships: bool = True) -> bool:
@@ -61,12 +81,15 @@ def job_matches_experience(experience: str, preferences: Dict[str, Any]) -> bool
     if not experience:
         return True
     exp_lower = (experience or "").lower()
-    return any(exp.lower() in exp_lower for exp in preferences.get("include_experience", []))
+    for reject in preferences.get("reject_experience", REJECT_EXPERIENCE):
+        if reject in exp_lower:
+            return False
+    return any(exp in exp_lower for exp in preferences.get("include_experience", ACCEPT_EXPERIENCE))
 
 
 def job_is_fresher(experience: str) -> bool:
     exp_lower = (experience or "").lower()
-    fresher_indicators = ["entry level", "0-2 years", "fresher", "intern"]
+    fresher_indicators = ["entry level", "0 years", "1 year", "2 years", "fresh graduate", "campus", "associate", "intern"]
     return any(ind in exp_lower for ind in fresher_indicators)
 
 
@@ -74,7 +97,7 @@ def get_url_hash(url: str) -> str:
     return hashlib.md5(url.encode()).hexdigest()
 
 
-def filter_job(job: Dict[str, Any], preferences: Optional[Dict[str, Any]] = None) -> bool:
+def filter_job(job: Dict[str, Any], preferences: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     if preferences is None:
         preferences = load_preferences()
     
@@ -83,23 +106,77 @@ def filter_job(job: Dict[str, Any], preferences: Optional[Dict[str, Any]] = None
     experience = str(job.get("experience", ""))
     posted_date = job.get("posted_date")
     
+    result = {
+        "passed": True,
+        "reject_reason": None,
+        "role_ok": True,
+        "location_ok": True,
+        "date_ok": True,
+        "experience_ok": True
+    }
+    
     if not job_matches_role(title):
-        return False
+        result["passed"] = False
+        result["reject_reason"] = "role"
+        result["role_ok"] = False
+        return result
     
     if not job_matches_location(location, preferences):
-        return False
+        result["passed"] = False
+        result["reject_reason"] = "location"
+        result["location_ok"] = False
+        return result
     
     if not job_is_recent(posted_date):
-        return False
+        result["passed"] = False
+        result["reject_reason"] = "date"
+        result["date_ok"] = False
+        return result
     
     if not job_matches_experience(experience, preferences):
-        return False
+        result["passed"] = False
+        result["reject_reason"] = "experience"
+        result["experience_ok"] = False
+        return result
     
-    return True
+    return result
 
 
-def apply_filters(jobs: List[Dict[str, Any]], preferences: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    return [job for job in jobs if filter_job(job, preferences)]
+def apply_filters(jobs: List[Dict[str, Any]], preferences: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    accepted = []
+    rejected = []
+    stats = {
+        "total_jobs": len(jobs),
+        "accepted_count": 0,
+        "rejected_count": 0,
+        "role_rejected": 0,
+        "location_rejected": 0,
+        "date_rejected": 0,
+        "experience_rejected": 0
+    }
+    
+    for job in jobs:
+        result = filter_job(job, preferences)
+        if result["passed"]:
+            accepted.append(job)
+            stats["accepted_count"] += 1
+        else:
+            rejected.append({"job": job, "reason": result["reject_reason"]})
+            stats["rejected_count"] += 1
+            if result["reject_reason"] == "role":
+                stats["role_rejected"] += 1
+            elif result["reject_reason"] == "location":
+                stats["location_rejected"] += 1
+            elif result["reject_reason"] == "date":
+                stats["date_rejected"] += 1
+            elif result["reject_reason"] == "experience":
+                stats["experience_rejected"] += 1
+    
+    return {
+        "accepted": accepted,
+        "rejected": rejected,
+        "stats": stats
+    }
 
 
 def get_job_age_days(posted_date: str) -> int:

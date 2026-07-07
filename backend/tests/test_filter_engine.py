@@ -13,17 +13,17 @@ class TestRoleFiltering:
     def test_software_developer_accepted(self):
         assert job_matches_role("Software Developer") == True
     
-    def test_python_developer_accepted(self):
-        assert job_matches_role("Python Developer") == True
+    def test_sde_accepted(self):
+        assert job_matches_role("SDE 1") == True
     
     def test_backend_engineer_accepted(self):
         assert job_matches_role("Backend Engineer") == True
     
-    def test_ai_engineer_accepted(self):
-        assert job_matches_role("AI Engineer") == True
+    def test_data_scientist_accepted(self):
+        assert job_matches_role("Data Scientist") == True
     
-    def test_sde_accepted(self):
-        assert job_matches_role("SDE 1") == True
+    def test_devops_accepted(self):
+        assert job_matches_role("DevOps Engineer") == True
     
     def test_sales_rejected(self):
         assert job_matches_role("Sales Associate") == False
@@ -31,33 +31,39 @@ class TestRoleFiltering:
     def test_marketing_rejected(self):
         assert job_matches_role("Marketing Manager") == False
     
-    def test_hr_rejected(self):
-        assert job_matches_role("HR Manager") == False
-    
     def test_finance_rejected(self):
         assert job_matches_role("Finance Analyst") == False
     
-    def test_recruiter_rejected(self):
-        assert job_matches_role("Recruiter") == False
+    def test_support_rejected(self):
+        assert job_matches_role("Customer Support") == False
     
-    def test_customer_support_rejected(self):
-        assert job_matches_role("Customer Support Representative") == False
+    def test_consultant_rejected(self):
+        assert job_matches_role("Consultant") == False
     
-    def test_hr_role_rejected(self):
-        assert job_matches_role("Software HR Specialist") == False
+    def test_manager_rejected(self):
+        assert job_matches_role("Engineering Manager") == False
+    
+    def test_lead_rejected(self):
+        assert job_matches_role("Team Lead") == False
+    
+    def test_architect_rejected(self):
+        assert job_matches_role("Software Architect") == False
+    
+    def test_director_rejected(self):
+        assert job_matches_role("Engineering Director") == False
 
 
 class TestLocationFiltering:
     def test_india_accepted(self):
-        prefs = {"include_locations": ["India", "Bangalore"]}
+        prefs = {"include_locations": ["bangalore", "hyderabad", "pune", "chennai", "noida", "gurugram", "mumbai", "delhi", "ahmedabad", "coimbatore", "kochi", "kolkata", "remote india", "remote (india)"]}
         assert job_matches_location("Bangalore, India", prefs) == True
     
-    def test_remote_accepted(self):
-        prefs = {"include_locations": ["Remote"]}
-        assert job_matches_location("Remote", prefs) == True
+    def test_remote_india_accepted(self):
+        prefs = {"include_locations": ["bangalore", "hyderabad", "pune", "chennai", "noida", "gurugram", "mumbai", "delhi", "ahmedabad", "coimbatore", "kochi", "kolkata", "remote india", "remote (india)"]}
+        assert job_matches_location("Remote India", prefs) == True
     
     def test_other_location_rejected(self):
-        prefs = {"include_locations": ["India"]}
+        prefs = {"include_locations": ["bangalore", "hyderabad", "pune", "chennai", "noida", "gurugram", "mumbai", "delhi", "ahmedabad", "coimbatore", "kochi", "kolkata", "remote india", "remote (india)"]}
         assert job_matches_location("New York, USA", prefs) == False
 
 
@@ -76,16 +82,20 @@ class TestDateFiltering:
 
 class TestExperienceFiltering:
     def test_entry_level_accepted(self):
-        prefs = {"include_experience": ["Entry Level", "Fresher"]}
+        prefs = {"include_experience": ["entry level", "fresh graduate"], "reject_experience": ["senior", "lead"]}
         assert job_matches_experience("Entry Level", prefs) == True
     
-    def test_fresher_accepted(self):
-        prefs = {"include_experience": ["Fresher"]}
-        assert job_matches_experience("Fresher", prefs) == True
+    def test_associate_accepted(self):
+        prefs = {"include_experience": ["associate", "entry level"], "reject_experience": ["senior", "lead"]}
+        assert job_matches_experience("Associate", prefs) == True
     
     def test_senior_rejected(self):
-        prefs = {"include_experience": ["Entry Level"]}
+        prefs = {"include_experience": ["entry level"], "reject_experience": ["senior", "lead"]}
         assert job_matches_experience("Senior", prefs) == False
+    
+    def test_3plus_years_rejected(self):
+        prefs = {"include_experience": ["entry level", "associate"], "reject_experience": ["3+ years", "senior", "lead"]}
+        assert job_matches_experience("3+ Years", prefs) == False
 
 
 class TestFresherDetection:
@@ -120,21 +130,45 @@ class TestDuplicateDetection:
 
 class TestJobAge:
     def test_job_age_calculated(self):
-        assert get_job_age_days("2026-07-01") == 5
+        from datetime import datetime, timedelta
+        yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
+        assert get_job_age_days(yesterday) == 1
 
 
 class TestFilterJob:
     def test_valid_job_passes(self):
         job = {"title": "Software Engineer", "location": "Bangalore, India", "experience": "Entry Level"}
-        assert filter_job(job) == True
+        result = filter_job(job)
+        assert result["passed"] == True
     
     def test_invalid_role_fails(self):
         job = {"title": "Sales Executive", "location": "Bangalore, India"}
-        assert filter_job(job) == False
+        result = filter_job(job)
+        assert result["passed"] == False
+        assert result["reject_reason"] == "role"
     
     def test_old_job_fails(self):
         job = {"title": "Software Engineer", "location": "Bangalore, India", "posted_date": "2026-05-01"}
-        assert filter_job(job) == False
+        result = filter_job(job)
+        assert result["passed"] == False
+        assert result["reject_reason"] == "date"
+
+
+class TestApplyFilters:
+    def test_returns_detailed_stats(self):
+        jobs = [
+            {"title": "Software Engineer", "location": "Bangalore, India", "experience": "Entry Level"},
+            {"title": "Sales Executive", "location": "Bangalore, India", "experience": "Entry Level"},
+            {"title": "Software Engineer", "location": "Seattle, USA", "experience": "Entry Level"},
+            {"title": "Software Engineer", "location": "Bangalore, India", "experience": "5+ Years"}
+        ]
+        result = apply_filters(jobs)
+        assert result["stats"]["total_jobs"] == 4
+        assert result["stats"]["accepted_count"] == 1
+        assert result["stats"]["rejected_count"] == 3
+        assert result["stats"]["role_rejected"] == 1
+        assert result["stats"]["location_rejected"] == 1
+        assert result["stats"]["experience_rejected"] == 1
 
 
 if __name__ == "__main__":
