@@ -40,9 +40,13 @@ def send_email(subject: str, html_content: str) -> bool:
         email_logger.info(f"Email sent to {EMAIL_TO}")
         return True
     except Exception as e:
+        import traceback
+        traceback.print_exc()
+
         from services.logging_service import email_logger
-        email_logger.error(f"Failed to send email: {str(e)}")
-        return False
+        email_logger.exception("Failed to send email")
+
+        raise
 
 
 def is_remote(job: dict) -> bool:
