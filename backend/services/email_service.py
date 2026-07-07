@@ -238,11 +238,12 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
                     
                     <div class="job-meta">
                         {% if job.posted_date %}Posted: {{ job.posted_date }}{% endif %}
-                        {% if job.employment_type %}<span class="separator">•</span> {{ job.employment_type }}{% endif %}
+                        {% if job.posted_date and job.employment_type %}<span class="separator">•</span> {% endif %}
+                        {% if job.employment_type %}{{ job.employment_type }}{% endif %}
                     </div>
                     
-                    <a href="{{ job.url }}" class="apply-btn">Direct Apply</a>
-                    {% if job.career_page %}<a href="{{ job.career_page }}" class="career-link">Career Page</a>{% endif %}
+                    <a href="{{ job.url }}" class="apply-btn" target="_blank" rel="noopener noreferrer">Direct Apply</a>
+                    {% if job.career_page %}<a href="{{ job.career_page }}" class="career-link" target="_blank" rel="noopener noreferrer">Career Page</a>{% endif %}
                 </div>
                 {% endfor %}
             </div>
@@ -262,19 +263,39 @@ def render_job_report_template(jobs: list, total_count: int = 0) -> str:
 </html>
 """)
     
-    jobs_by_company = defaultdict(list)
+    seen = set()
+    unique_jobs = []
     for job in jobs:
-        company = job.get("company", "Unknown")
+        company = str(job.get("company", "") or "")
+        title = str(job.get("title", "") or "")
+        url = str(job.get("url", "") or "")
+        key = (company, title, url)
+        if key not in seen:
+            seen.add(key)
+            unique_jobs.append(job)
+    
+    def sort_key(job):
+        posted = job.get("posted_date") or ""
+        return (not posted, posted)
+    
+    unique_jobs.sort(key=sort_key)
+    
+    jobs_by_company = defaultdict(list)
+    for job in unique_jobs:
+        company = job.get("company", "Unknown") or "Unknown"
         job_copy = dict(job)
         job_copy["is_remote"] = is_remote(job)
         job_copy["is_hybrid"] = is_hybrid(job)
         job_copy["is_entry_level"] = job_is_fresher(job.get("experience", ""))
         jobs_by_company[company].append(job_copy)
     
+    sorted_companies = sorted(jobs_by_company.keys())
+    jobs_by_company_sorted = {company: jobs_by_company[company] for company in sorted_companies}
+    
     return template.render(
-        jobs=jobs,
-        jobs_by_company=dict(jobs_by_company),
-        total_count=total_count or len(jobs),
+        jobs=unique_jobs,
+        jobs_by_company=dict(jobs_by_company_sorted),
+        total_count=total_count or len(unique_jobs),
         current_date=datetime.now().strftime("%B %d, %Y")
     )
 
@@ -297,9 +318,12 @@ def send_today_jobs_email() -> bool:
         "posted_date": j.posted_date,
         "employment_type": j.employment_type,
         "experience": j.experience,
-        "career_page": f"https://{(j.company or '').lower()}.com/careers" if j.company else None
+        "career_page": None
     } for j in jobs]
     
-    html_content = render_job_report_template(jobs_list, len(jobs))
+    today_str = datetime.now().strftime("%d %b %Y")
+    subject = f"🚀 {len(jobs_list)} New Software Jobs - {today_str}"
     
-    return send_email("StartXNow AI Daily Career Report", html_content)
+    html_content = render_job_report_template(jobs_list, len(jobs_list))
+    
+    return send_email(subject, html_content)
